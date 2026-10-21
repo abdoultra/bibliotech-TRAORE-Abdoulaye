@@ -19,9 +19,9 @@ LOAN_LIMITS = {"student": 5, "premium": 8}
 
 class Library:
     def __init__(self):
-        self.b = []
-        self.m = []
-        self.l = []
+        self.books = []
+        self.members = []
+        self.loans = []
         self.plugins = {}
         self.load()
 
@@ -30,7 +30,7 @@ class Library:
         self.load_members()
         self.load_loans()
         if debug:
-            print("chargement ok", len(self.b), len(self.m), len(self.l))
+            print("chargement ok", len(self.books), len(self.members), len(self.loans))
 
     def load_books(self):
         with open(DATA + "/books.csv", encoding="utf-8") as f:
@@ -39,7 +39,7 @@ class Library:
             if line.strip() == "":
                 continue
             x = line.strip().split(";")
-            self.b.append(
+            self.books.append(
                 {
                     "id": x[0],
                     "title": x[1],
@@ -58,7 +58,7 @@ class Library:
                 continue
             x = line.strip().split(";")
             a = x[4] == "1"
-            self.m.append(
+            self.members.append(
                 {"id": x[0], "name": x[1], "email": x[2], "type": x[3], "active": a}
             )
 
@@ -73,7 +73,7 @@ class Library:
                 fee = float(x[6])
             except (ValueError, IndexError):
                 fee = 0
-            self.l.append(
+            self.loans.append(
                 {
                     "id": x[0],
                     "member": x[1],
@@ -88,7 +88,7 @@ class Library:
     def save(self):
         with open(DATA + "/loans.csv", "w", encoding="utf-8") as f:
             f.write("id;member_id;book_id;start;due;returned;fee\n")
-            for x in self.l:
+            for x in self.loans:
                 f.write(
                     x["id"]
                     + ";"
@@ -107,7 +107,7 @@ class Library:
                 )
 
     def find(self, category, item_id):
-        collections = {"b": self.b, "m": self.m, "l": self.l}
+        collections = {"book": self.books, "member": self.members, "loan": self.loans}
         return next(
             (item for item in collections.get(category, []) if item["id"] == item_id),
             None,
@@ -115,8 +115,8 @@ class Library:
 
     def loan_parties(self, loan):
         """Ignore orphan loans with a diagnostic instead of crashing."""
-        book = self.find("b", loan["book"])
-        member = self.find("m", loan["member"])
+        book = self.find("book", loan["book"])
+        member = self.find("member", loan["member"])
         if book is None or member is None:
             LOGGER.warning(
                 "Emprunt %s ignore : livre ou membre introuvable", loan["id"]
@@ -126,7 +126,7 @@ class Library:
 
     def next_loan_id(self):
         numbers = []
-        for loan in self.l:
+        for loan in self.loans:
             match = re.fullmatch(r"L([0-9]+)", loan["id"])
             if match is None:
                 LOGGER.warning("Identifiant d'emprunt invalide ignore : %s", loan["id"])
@@ -134,30 +134,30 @@ class Library:
             numbers.append(int(match[1]))
         return f"L{max(numbers, default=0) + 1:03d}"
 
-    def nb(self, mid):
+    def active_loan_count(self, mid):
         n = 0
-        for x in self.l:
+        for x in self.loans:
             if x["member"] == mid and x["returned"] == "":
                 n = n + 1
         return n
 
-    def dispo(self, bid):
-        bk = self.find("b", bid)
+    def available_copies(self, bid):
+        bk = self.find("book", bid)
         if bk is None:
             LOGGER.warning("Disponibilite demandee pour un livre inconnu : %s", bid)
             return 0
         n = 0
-        for x in self.l:
+        for x in self.loans:
             if x["book"] == bid and x["returned"] == "":
                 n = n + 1
         return bk["copies"] - n
 
     def borrow(self, mid, bid):
-        member = self.find("m", mid)
+        member = self.find("member", mid)
         if member is None:
             print("Erreur : membre inconnu")
             return False
-        book = self.find("b", bid)
+        book = self.find("book", bid)
         if book is None:
             print("Erreur : livre inconnu")
             return False
@@ -165,7 +165,9 @@ class Library:
             print("Refus : membre inactif")
             return False
         active_loans = [
-            loan for loan in self.l if loan["member"] == mid and loan["returned"] == ""
+            loan
+            for loan in self.loans
+            if loan["member"] == mid and loan["returned"] == ""
         ]
         if any(
             datetime.strptime(loan["due"], "%Y-%m-%d").date() < get_today()
@@ -180,13 +182,13 @@ class Library:
         if any(loan["book"] == bid for loan in active_loans):
             print("Refus : deja emprunte par ce membre")
             return False
-        if self.dispo(bid) <= 0:
+        if self.available_copies(bid) <= 0:
             print("Refus : plus d'exemplaire disponible")
             return False
         today = get_today()
         due = today + timedelta(days=LOAN_DAYS.get(book["kind"], 21))
         new_id = self.next_loan_id()
-        self.l.append(
+        self.loans.append(
             {
                 "id": new_id,
                 "member": mid,
@@ -211,8 +213,8 @@ class Library:
         return True
 
     # retour d'un document
-    def ret(self, lid):
-        ln = self.find("l", lid)
+    def return_loan(self, lid):
+        ln = self.find("loan", lid)
         if ln is None:
             print("Erreur : emprunt inconnu")
             return
@@ -242,25 +244,22 @@ class Library:
 
     # liste des retards + simulation des rappels
     def overdue(self):
-        tmp = []
-        for x in self.l:
-            if self.loan_parties(x) is None:
+        overdue_loans = []
+        for loan in self.loans:
+            if loan["returned"] != "":
                 continue
-            if (
-                x["returned"] == ""
-                and datetime.strptime(x["due"], "%Y-%m-%d").date() < get_today()
-            ):
-                tmp.append(x)
-        if len(tmp) == 0:
+            due = datetime.strptime(loan["due"], "%Y-%m-%d").date()
+            if due >= get_today():
+                continue
+            parties = self.loan_parties(loan)
+            if parties is not None:
+                overdue_loans.append((loan, *parties))
+        if not overdue_loans:
             print("Aucun retard.")
             return
-        tmp.sort(key=lambda x: (x["due"], x["id"]))
+        overdue_loans.sort(key=lambda item: (item[0]["due"], item[0]["id"]))
         total = 0
-        for x in tmp:
-            parties = self.loan_parties(x)
-            if parties is None:
-                continue
-            book, member = parties
+        for x, book, member in overdue_loans:
             nbj = (get_today() - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
             p = calc_fee(nbj, book, member)
             total = total + p
@@ -291,7 +290,7 @@ class Library:
     def valid_loans(self):
         """Return loans with existing books and members, logging invalid ones."""
         loans = []
-        for loan in self.l:
+        for loan in self.loans:
             parties = self.loan_parties(loan)
             if parties is not None:
                 loans.append((loan, *parties))
@@ -334,14 +333,14 @@ class Library:
     def report(self):
         loans = self.valid_loans()
         ongoing, overdue, collected, pending = self.loan_statistics(loans)
-        copies = sum(book["copies"] for book in self.b)
-        active_members = sum(bool(member["active"]) for member in self.m)
+        copies = sum(book["copies"] for book in self.books)
+        active_members = sum(bool(member["active"]) for member in self.members)
         print("=== RAPPORT BIBLIOTECH ===")
         print("Date : " + str(get_today()))
-        print(f"Titres : {len(self.b)} ({copies} exemplaires)")
-        print(f"Membres : {len(self.m)} dont {active_members} actifs")
+        print(f"Titres : {len(self.books)} ({copies} exemplaires)")
+        print(f"Membres : {len(self.members)} dont {active_members} actifs")
         print(
-            f"Emprunts : {len(self.l)} au total, {ongoing} en cours, "
+            f"Emprunts : {len(self.loans)} au total, {ongoing} en cours, "
             f"{overdue} en retard"
         )
         print("Penalites encaissees : " + "%.2f" % collected + " EUR")
@@ -368,7 +367,7 @@ class Library:
                 + "fee\n"
             )
             n = 0
-            for x in self.l:
+            for x in self.loans:
                 parties = self.loan_parties(x)
                 if parties is None:
                     continue
@@ -440,8 +439,8 @@ def calc_fee(days, book, member):
 
 
 def list_command(library, args):
-    for book in library.b:
-        available = library.dispo(book["id"])
+    for book in library.books:
+        available = library.available_copies(book["id"])
         print(
             f"{book['id']} | {book['title']} | {book['author']} | {book['kind']} | "
             f"{available}/{book['copies']} disponible(s)"
@@ -450,11 +449,11 @@ def list_command(library, args):
 
 
 def members_command(library, args):
-    for member in library.m:
+    for member in library.members:
         status = "actif" if member["active"] else "inactif"
         print(
             f"{member['id']} | {member['name']} | {member['type']} | {status} | "
-            f"{library.nb(member['id'])} emprunt(s) en cours"
+            f"{library.active_loan_count(member['id'])} emprunt(s) en cours"
         )
     return 0
 
@@ -470,7 +469,7 @@ def return_command(library, args):
     if len(args) < 2:
         print("Usage : return <id_emprunt>")
         return 1
-    library.ret(args[1])
+    library.return_loan(args[1])
     return 0
 
 

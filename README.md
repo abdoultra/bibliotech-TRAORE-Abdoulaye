@@ -85,3 +85,10 @@ d'un livre inconnu vaut zero. Les identifiants qui ne respectent pas
 `L` suivi de chiffres sont signales et exclus du calcul du prochain identifiant.
 Les CSV sont lus et ecrits en UTF-8. Une erreur de plugin est journalisee avec
 sa trace, puis les autres plugins continuent.
+
+## Tests de robustesse
+
+`python -m pytest` execute aussi `tests/test_robustesse.py` : commandes sans date,
+references orphelines, filtrage des rappels, identifiants invalides, erreurs et
+options de plugins, prix contenant du code et accents UTF-8. Ces tests travaillent
+sur des copies temporaires et ne modifient pas les donnees du projet.

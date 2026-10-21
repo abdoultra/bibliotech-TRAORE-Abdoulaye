@@ -50,3 +50,16 @@ Les fichiers du dossier tests/ restent inchanges.
 Validation finale : 21 tests passent ; ruff check . affiche All checks passed!
 Le seuil de complexite reste fixe a 8 dans pyproject.toml, sans ajout de noqa.
 Verification complementaire : rapport avec emprunt orphelin et commande inconnue.
+
+## Deuxieme relecture : regressions et noms explicites
+
+| Defaut | Emplacement | Correction | Principe |
+| --- | --- | --- | --- |
+| Date par defaut non couverte | get_today et CLI | Verifier TODAY=None au niveau module et absence de global inutile ; test list sans --today et date du jour | Regression |
+| Validation double et avertissements sur emprunts rendus | overdue | Filtrer retour et echeance avant resolution ; conserver les tuples emprunt/livre/membre en une passe | Eviter les traitements redondants |
+| Robustesse verifiee seulement ponctuellement | tests/test_robustesse.py | Ajouter 14 cas automatises : orphelins livre/membre, filtrage des rendus, 6 identifiants invalides, plugins, prix piege, UTF-8 et date par defaut | Verification reproductible |
+| Noms cryptiques | Library et appels CLI | books, members, loans, return_loan, available_copies, active_loan_count ; categories book/member/loan | Intention explicite |
+
+Les 21 tests de caracterisation et leurs references restent inchanges.
+Le nouveau fichier de tests est ajoute a la demande explicite de l'enseignant.
+Validation : 35 tests passent (21 existants + 14 nouveaux) ; Ruff ne signale rien.
