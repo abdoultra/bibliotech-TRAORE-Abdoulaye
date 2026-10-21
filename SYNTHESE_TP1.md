@@ -38,3 +38,15 @@ Les fichiers du dossier tests/ restent inchanges.
   UTF-8, isolation des options, journalisation des erreurs et poursuite des plugins,
   rejet d'un prix contenant du code Python sans execution.
 - Aucun fichier de tests/ ou data/ modifie.
+
+## Suppression des trois derniers signalements de complexite
+
+| Defaut | Emplacement | Correction | Principe |
+| --- | --- | --- | --- |
+| Chargement de trois entites dans une seule methode | load | Extraire load_books, load_members et load_loans ; load orchestre les appels | Responsabilite unique |
+| Rapport melant validation, calculs et classements | report | Extraire valid_loans, loan_statistics et print_loan_rankings ; conserver les sorties | Separation des responsabilites |
+| Routage CLI et traitement de toutes les commandes reunis | process | Table COMMAND_HANDLERS et fonction dediee a chaque commande ; conserver messages et codes de sortie | Separation du routage et des actions |
+
+Validation finale : 21 tests passent ; ruff check . affiche All checks passed!
+Le seuil de complexite reste fixe a 8 dans pyproject.toml, sans ajout de noqa.
+Verification complementaire : rapport avec emprunt orphelin et commande inconnue.
