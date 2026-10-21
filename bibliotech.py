@@ -55,7 +55,7 @@ class Library:
             except:
                 fee = 0
             self.l.append({"id": x[0], "member": x[1], "book": x[2], "start": x[3], "due": x[4], "returned": x[5], "fee": fee})
-        if debug == True:
+        if debug:
             print("chargement ok", len(self.b), len(self.m), len(self.l))
 
     def save(self):
@@ -102,14 +102,14 @@ class Library:
         if mb is not None:
             bk = self.find("b", bid)
             if bk is not None:
-                if mb["active"] == True:
+                if mb["active"]:
                     # verif retards
                     late = False
                     for x in self.l:
                         if x["member"] == mid and x["returned"] == "":
                             if datetime.strptime(x["due"], "%Y-%m-%d").date() < get_today():
                                 late = True
-                    if late == False:
+                    if not late:
                         # verif nombre max
                         if mb["type"] == "student":
                             mx = 5
@@ -254,7 +254,7 @@ class Library:
         print("Titres : " + str(len(self.b)) + " (" + str(c) + " exemplaires)")
         a = 0
         for x in self.m:
-            if x["active"] == True:
+            if x["active"]:
                 a = a + 1
         print("Membres : " + str(len(self.m)) + " dont " + str(a) + " actifs")
         en_cours = 0
@@ -407,7 +407,7 @@ def process(args):
             print("Usage : borrow <id_membre> <id_document>")
             return 1
         r = lib.do_stuff(args[1], args[2])
-        if r == False:
+        if not r:
             return 2
     elif cmd == "return":
         if len(args) < 2:
