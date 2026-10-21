@@ -71,3 +71,24 @@ ruff format .           # mettre en forme le code
 3. Ne committez jamais avec un test rouge.
 4. Un message de commit explicite par amélioration.
 5. Notez chaque correction dans votre fichier de synthèse.
+
+## Robustesse et rappels
+
+La commande `overdue` simule les rappels : `EMAIL ->` affiche le message,
+sans envoi de courriel ni connexion a un serveur SMTP.
+
+Les emprunts dont le livre ou le membre est introuvable sont ignores dans
+les calculs du rapport, les rappels et l'export, avec un avertissement sur stderr.
+Le total historique du rapport conserve le nombre de lignes d'emprunts.
+Un retour orphelin est refuse sans modifier les donnees. La disponibilite
+d'un livre inconnu vaut zero. Les identifiants qui ne respectent pas
+`L` suivi de chiffres sont signales et exclus du calcul du prochain identifiant.
+Les CSV sont lus et ecrits en UTF-8. Une erreur de plugin est journalisee avec
+sa trace, puis les autres plugins continuent.
+
+## Tests de robustesse
+
+`python -m pytest` execute aussi `tests/test_robustesse.py` : commandes sans date,
+references orphelines, filtrage des rappels, identifiants invalides, erreurs et
+options de plugins, prix contenant du code et accents UTF-8. Ces tests travaillent
+sur des copies temporaires et ne modifient pas les donnees du projet.
