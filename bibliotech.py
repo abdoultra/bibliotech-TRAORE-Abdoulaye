@@ -23,17 +23,15 @@ class Library:
 
     # chargement des donnees
     def load(self):
-        f = open(DATA + "/books.csv")
-        lines = f.readlines()
-        f.close()
+        with open(DATA + "/books.csv") as f:
+            lines = f.readlines()
         for line in lines[1:]:
             if line.strip() == "":
                 continue
             x = line.strip().split(";")
             self.b.append({"id": x[0], "title": x[1], "author": x[2], "kind": x[3], "price": eval(x[4]), "copies": int(x[5])})
-        f = open(DATA + "/members.csv")
-        lines = f.readlines()
-        f.close()
+        with open(DATA + "/members.csv") as f:
+            lines = f.readlines()
         for line in lines[1:]:
             if line.strip() == "":
                 continue
@@ -43,9 +41,8 @@ class Library:
             else:
                 a = False
             self.m.append({"id": x[0], "name": x[1], "email": x[2], "type": x[3], "active": a})
-        f = open(DATA + "/loans.csv")
-        lines = f.readlines()
-        f.close()
+        with open(DATA + "/loans.csv") as f:
+            lines = f.readlines()
         for line in lines[1:]:
             if line.strip() == "":
                 continue
@@ -59,11 +56,10 @@ class Library:
             print("chargement ok", len(self.b), len(self.m), len(self.l))
 
     def save(self):
-        f = open(DATA + "/loans.csv", "w")
-        f.write("id;member_id;book_id;start;due;returned;fee\n")
-        for x in self.l:
-            f.write(x["id"] + ";" + x["member"] + ";" + x["book"] + ";" + x["start"] + ";" + x["due"] + ";" + x["returned"] + ";" + "%.2f" % x["fee"] + "\n")
-        f.close()
+        with open(DATA + "/loans.csv", "w") as f:
+            f.write("id;member_id;book_id;start;due;returned;fee\n")
+            for x in self.l:
+                f.write(x["id"] + ";" + x["member"] + ";" + x["book"] + ";" + x["start"] + ";" + x["due"] + ";" + x["returned"] + ";" + "%.2f" % x["fee"] + "\n")
 
     # t = "b" pour livre, "m" pour membre, "l" pour emprunt
     def find(self, t, id):
@@ -320,39 +316,38 @@ class Library:
             i = i + 1
 
     def export(self, fname, sep):
-        f = open(fname, "w")
-        f.write("loan_id" + sep + "member" + sep + "title" + sep + "start" + sep + "due" + sep + "returned" + sep + "days_late" + sep + "fee\n")
-        n = 0
-        for x in self.l:
-            bk = self.find("b", x["book"])
-            mb = self.find("m", x["member"])
-            if x["returned"] != "":
-                end = datetime.strptime(x["returned"], "%Y-%m-%d").date()
-            else:
-                end = get_today()
-            dl = (end - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
-            if dl > 0:
-                if bk["kind"] == "book":
-                    fee = dl * 0.5
-                elif bk["kind"] == "dvd":
-                    fee = dl * 1.0
-                elif bk["kind"] == "magazine":
-                    fee = dl * 0.2
+        with open(fname, "w") as f:
+            f.write("loan_id" + sep + "member" + sep + "title" + sep + "start" + sep + "due" + sep + "returned" + sep + "days_late" + sep + "fee\n")
+            n = 0
+            for x in self.l:
+                bk = self.find("b", x["book"])
+                mb = self.find("m", x["member"])
+                if x["returned"] != "":
+                    end = datetime.strptime(x["returned"], "%Y-%m-%d").date()
                 else:
-                    fee = dl * 0.5
-                if mb["type"] == "student":
-                    fee = fee * 0.5
-                elif mb["type"] == "premium":
+                    end = get_today()
+                dl = (end - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
+                if dl > 0:
+                    if bk["kind"] == "book":
+                        fee = dl * 0.5
+                    elif bk["kind"] == "dvd":
+                        fee = dl * 1.0
+                    elif bk["kind"] == "magazine":
+                        fee = dl * 0.2
+                    else:
+                        fee = dl * 0.5
+                    if mb["type"] == "student":
+                        fee = fee * 0.5
+                    elif mb["type"] == "premium":
+                        fee = 0
+                    if fee > bk["price"]:
+                        fee = bk["price"]
+                else:
                     fee = 0
-                if fee > bk["price"]:
-                    fee = bk["price"]
-            else:
-                fee = 0
-                dl = 0
-            fee = round(fee, 2)
-            f.write(x["id"] + sep + mb["name"] + sep + bk["title"] + sep + x["start"] + sep + x["due"] + sep + x["returned"] + sep + str(dl) + sep + "%.2f" % fee + "\n")
-            n = n + 1
-        f.close()
+                    dl = 0
+                fee = round(fee, 2)
+                f.write(x["id"] + sep + mb["name"] + sep + bk["title"] + sep + x["start"] + sep + x["due"] + sep + x["returned"] + sep + str(dl) + sep + "%.2f" % fee + "\n")
+                n = n + 1
         print("Export termine : " + str(n) + " lignes dans " + fname)
 
     # systeme de plugins (pour plus tard)
