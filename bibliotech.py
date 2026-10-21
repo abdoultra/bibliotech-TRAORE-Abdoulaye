@@ -99,9 +99,9 @@ class Library:
     # emprunter un document
     def do_stuff(self, mid, bid):
         mb = self.find("m", mid)
-        if mb != None:
+        if mb is not None:
             bk = self.find("b", bid)
-            if bk != None:
+            if bk is not None:
                 if mb["active"] == True:
                     # verif retards
                     late = False
@@ -169,7 +169,7 @@ class Library:
     # retour d'un document
     def ret(self, lid):
         ln = self.find("l", lid)
-        if ln == None:
+        if ln is None:
             print("Erreur : emprunt inconnu")
             return
         if ln["returned"] != "":
@@ -371,7 +371,7 @@ class Library:
 
 def get_today():
     global TODAY
-    if TODAY == None:
+    if TODAY is None:
         return date.today()
     return TODAY
 
