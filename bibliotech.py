@@ -319,7 +319,7 @@ class Library:
             ).days
             if days > 0:
                 overdue += 1
-                pending += calc_fee(days, book, member)
+                pending += late_fee(days, book["kind"], member["type"], book["price"])
         return ongoing, overdue, collected, pending
 
     def print_loan_rankings(self, loans):
