@@ -388,7 +388,7 @@ class Library:
                 else:
                     end = get_today()
                 dl = (end - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
-                fee = calc_fee(dl, bk, mb)
+                fee = late_fee(dl, bk["kind"], mb["type"], bk["price"])
                 dl = max(dl, 0)
                 f.write(
                     x["id"]
