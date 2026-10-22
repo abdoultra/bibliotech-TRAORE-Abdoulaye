@@ -437,11 +437,6 @@ def get_today():
     return TODAY
 
 
-def calc_fee(days, book, member):
-    """Temporary adapter while callers migrate to the explicit late_fee contract."""
-    return late_fee(days, book["kind"], member["type"], book["price"])
-
-
 def list_command(library, args):
     for book in library.books:
         available = library.available_copies(book["id"])
