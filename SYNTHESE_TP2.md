@@ -71,6 +71,10 @@ Commande : `python -m radon cc -s -a bibliotech.py` (Radon 6.0.1).
 | Element | Debut TP2 | Fin des niveaux obligatoires |
 | --- | --- | --- |
 | borrow | C (13) | A (4) |
+| refusal_reason | Incluse dans borrow | B (6) |
+| has_overdue_loan | Incluse dans borrow | A (4) |
+| is_borrowing | Incluse dans borrow | A (4) |
+| create_loan | Incluse dans borrow | A (1) |
 | report | A (3) | A (3) |
 | overdue | B (7) | B (7) |
 | Calcul des penalites | calc_fee A (4) | late_fee A (2) |
@@ -79,9 +83,28 @@ Commande : `python -m radon cc -s -a bibliotech.py` (Radon 6.0.1).
 | Tests | 35 | 59 |
 | Signalements Ruff | 0 | 0 |
 
+`refusal_reason` est B (6) : c'est une liste plate de cinq regles ordonnees,
+testees une a une ; les tests d'emprunt couvrent les motifs et leur priorite.
+Les quatre valeurs des methodes extraites ont ete mesurees avec Radon 6.0.1.
+
 Les 21 tests de caracterisation et les references golden restent inchanges.
 Les 14 cas de robustesse du TP1 passent egalement. Les donnees de reference
 ne sont pas modifiees. Les 24 nouveaux cas portent le total a 59 tests.
+
+## Corrections apres revue du TP2
+
+- Ajout des mesures reelles des quatre methodes extraites au tableau ci-dessus.
+- Le golden `return_on_time` couvre deja le retour L006 sans retard :
+  affichage et CSV contiennent `0.00`. Aucun golden existant ne rend L005,
+  l'emprunt premium ; overdue/export couvrent son calcul mais pas son retour.
+- Ajout de `tests/test_returns.py` : deux scenarios de regression comparent
+  exactement stdout et la ligne CSV ecrite, pour L006 (a temps) et L005
+  (premium, dix jours de retard). Les fichiers golden d'origine restent intacts.
+- Le passage interne de 0 entier a 0.0 flottant ne change pas ces sorties :
+  return_loan et save formatent tous deux les penalites avec `%.2f`.
+- La fixture documente maintenant l'etat des CSV necessaire aux tests
+  d'emprunt et de retour, ainsi que l'isolation par copie temporaire.
+- Total apres cette revue : 61 tests (les 59 precedents et 2 retours).
 
 ## Reste a faire pour le rendu
 
