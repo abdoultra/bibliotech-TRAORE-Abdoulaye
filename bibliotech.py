@@ -13,8 +13,19 @@ TODAY = None
 debug = False
 LOGGER = logging.getLogger(__name__)
 DAILY_FEES = {"book": 0.5, "dvd": 1.0, "magazine": 0.2}
+DEFAULT_DAILY_FEE = 0.5
+DISCOUNTS = {"student": 0.5, "premium": 1.0}
 LOAN_DAYS = {"book": 21, "dvd": 7, "magazine": 3}
 LOAN_LIMITS = {"student": 5, "premium": 8}
+
+
+def late_fee(days_late: int, kind: str, member_type: str, price: float) -> float:
+    """Return the discounted late fee, capped at the document price."""
+    if days_late <= 0:
+        return 0.0
+    fee = days_late * DAILY_FEES.get(kind, DEFAULT_DAILY_FEE)
+    fee *= 1 - DISCOUNTS.get(member_type, 0.0)
+    return round(min(fee, price), 2)
 
 
 class Library:
@@ -427,15 +438,8 @@ def get_today():
 
 
 def calc_fee(days, book, member):
-    """Calculate the rounded fee, with membership reduction and price cap."""
-    if days <= 0:
-        return 0
-    fee = days * DAILY_FEES.get(book["kind"], DAILY_FEES["book"])
-    if member["type"] == "student":
-        fee *= 0.5
-    elif member["type"] == "premium":
-        fee = 0
-    return round(min(fee, book["price"]), 2)
+    """Temporary adapter while callers migrate to the explicit late_fee contract."""
+    return late_fee(days, book["kind"], member["type"], book["price"])
 
 
 def list_command(library, args):
