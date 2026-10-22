@@ -272,7 +272,7 @@ class Library:
         total = 0
         for x, book, member in overdue_loans:
             nbj = (get_today() - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
-            p = calc_fee(nbj, book, member)
+            p = late_fee(nbj, book["kind"], member["type"], book["price"])
             total = total + p
             print(
                 x["id"]
