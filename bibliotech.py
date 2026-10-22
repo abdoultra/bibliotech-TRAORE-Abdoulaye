@@ -238,7 +238,7 @@ class Library:
         bk, mb = parties
         t = get_today()
         d = (t - datetime.strptime(ln["due"], "%Y-%m-%d").date()).days
-        f = calc_fee(d, bk, mb)
+        f = late_fee(d, bk["kind"], mb["type"], bk["price"])
         d = max(d, 0)
         ln["returned"] = str(t)
         ln["fee"] = f
