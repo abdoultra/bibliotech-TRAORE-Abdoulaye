@@ -30,6 +30,11 @@ def late_fee(days_late: int, kind: str, member_type: str, price: float) -> float
     return round(min(fee, price), 2)
 
 
+def parse_date(text: str) -> date:
+    """Read the date format used by CSV files and the CLI."""
+    return datetime.strptime(text, "%Y-%m-%d").date()
+
+
 class Library:
     def __init__(self):
         self.books = []
@@ -200,7 +205,7 @@ class Library:
         return any(
             loan["member"] == member_id
             and loan["returned"] == ""
-            and datetime.strptime(loan["due"], "%Y-%m-%d").date() < get_today()
+            and parse_date(loan["due"]) < get_today()
             for loan in self.loans
         )
 
@@ -254,7 +259,7 @@ class Library:
             return
         bk, mb = parties
         t = get_today()
-        d = (t - datetime.strptime(ln["due"], "%Y-%m-%d").date()).days
+        d = (t - parse_date(ln["due"])).days
         f = late_fee(d, bk["kind"], mb["type"], bk["price"])
         d = max(d, 0)
         ln["returned"] = str(t)
@@ -276,7 +281,7 @@ class Library:
         for loan in self.loans:
             if loan["returned"] != "":
                 continue
-            due = datetime.strptime(loan["due"], "%Y-%m-%d").date()
+            due = parse_date(loan["due"])
             if due >= get_today():
                 continue
             parties = self.loan_parties(loan)
@@ -288,7 +293,7 @@ class Library:
         overdue_loans.sort(key=lambda item: (item[0]["due"], item[0]["id"]))
         total = 0
         for x, book, member in overdue_loans:
-            nbj = (get_today() - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
+            nbj = (get_today() - parse_date(x["due"])).days
             p = late_fee(nbj, book["kind"], member["type"], book["price"])
             total = total + p
             print(
@@ -331,9 +336,7 @@ class Library:
                 collected += loan["fee"]
                 continue
             ongoing += 1
-            days = (
-                get_today() - datetime.strptime(loan["due"], "%Y-%m-%d").date()
-            ).days
+            days = (get_today() - parse_date(loan["due"])).days
             if days > 0:
                 overdue += 1
                 pending += late_fee(days, book["kind"], member["type"], book["price"])
@@ -400,11 +403,8 @@ class Library:
                 if parties is None:
                     continue
                 bk, mb = parties
-                if x["returned"] != "":
-                    end = datetime.strptime(x["returned"], "%Y-%m-%d").date()
-                else:
-                    end = get_today()
-                dl = (end - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
+                end = parse_date(x["returned"]) if x["returned"] != "" else get_today()
+                dl = (end - parse_date(x["due"])).days
                 fee = late_fee(dl, bk["kind"], mb["type"], bk["price"])
                 dl = max(dl, 0)
                 f.write(
@@ -537,7 +537,7 @@ if __name__ == "__main__":
     a = sys.argv[1:]
     if "--today" in a:
         i = a.index("--today")
-        TODAY = datetime.strptime(a[i + 1], "%Y-%m-%d").date()
+        TODAY = parse_date(a[i + 1])
         a = a[:i] + a[i + 2 :]
     if "--debug" in a:
         debug = True
