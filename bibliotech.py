@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import sys
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 DATA = os.environ.get("BIBLIOTECH_DATA", "data")
@@ -38,6 +39,15 @@ def parse_date(text: str) -> date:
 def find_by_id(items, item_id):
     """Return the first matching record, or None."""
     return next((item for item in items if item["id"] == item_id), None)
+
+
+@dataclass(frozen=True)
+class OverdueLoan:
+    loan_id: str
+    member: dict
+    book: dict
+    days_late: int
+    fee: float
 
 
 class Library:
@@ -282,50 +292,42 @@ class Library:
             + " EUR"
         )
 
-    # liste des retards + simulation des rappels
-    def overdue(self):
-        overdue_loans = []
-        for loan in self.loans:
+    def find_overdue_loans(self) -> list[OverdueLoan]:
+        """Calculate reminders without printing; log inconsistent references."""
+        today = get_today()
+        results = []
+        for loan in sorted(self.loans, key=lambda item: (item["due"], item["id"])):
             if loan["returned"] != "":
                 continue
             due = parse_date(loan["due"])
-            if due >= get_today():
+            if due >= today:
                 continue
             parties = self.loan_parties(loan)
-            if parties is not None:
-                overdue_loans.append((loan, *parties))
+            if parties is None:
+                continue
+            book, member = parties
+            days = (today - due).days
+            fee = late_fee(days, book["kind"], member["type"], book["price"])
+            results.append(OverdueLoan(loan["id"], member, book, days, fee))
+        return results
+
+    def overdue(self):
+        overdue_loans = self.find_overdue_loans()
         if not overdue_loans:
             print("Aucun retard.")
             return
-        overdue_loans.sort(key=lambda item: (item[0]["due"], item[0]["id"]))
-        total = 0
-        for x, book, member in overdue_loans:
-            nbj = (get_today() - parse_date(x["due"])).days
-            p = late_fee(nbj, book["kind"], member["type"], book["price"])
-            total = total + p
+        for loan in overdue_loans:
             print(
-                x["id"]
-                + " | "
-                + member["name"]
-                + " | "
-                + book["title"]
-                + " | "
-                + str(nbj)
-                + " jour(s) | "
-                + "%.2f" % p
-                + " EUR"
+                f"{loan.loan_id} | {loan.member['name']} | {loan.book['title']} | "
+                f"{loan.days_late} jour(s) | {loan.fee:.2f} EUR"
             )
             # Simulation du rappel : aucun message n'est envoye.
             print(
-                "EMAIL -> "
-                + member["email"]
-                + " : Rappel, vous devez rendre '"
-                + book["title"]
-                + "' (retard "
-                + str(nbj)
-                + " jours)"
+                f"EMAIL -> {loan.member['email']} : Rappel, vous devez rendre "
+                f"'{loan.book['title']}' (retard {loan.days_late} jours)"
             )
-        print("Total des penalites en cours : " + "%.2f" % total + " EUR")
+        total = sum(loan.fee for loan in overdue_loans)
+        print(f"Total des penalites en cours : {total:.2f} EUR")
 
     def valid_loans(self):
         """Return loans with existing books and members, logging invalid ones."""
