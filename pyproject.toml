@@ -13,7 +13,15 @@ line-length = 88
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "N", "B", "SIM", "C90"]
+select = ["E", "W", "F", "I", "N", "B", "S", "SIM", "C90"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 8
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"] # Les assertions sont les attentes normales de pytest.
+# CLI de test : sys.executable et chemin absolu, arguments internes, sans shell.
+# Exceptions limitées aux trois fichiers concernés ; S603 reste active ailleurs.
+"tests/test_caracterisation.py" = ["S603"]
+"tests/test_returns.py" = ["S603"]
+"tests/test_robustesse.py" = ["S603"]
