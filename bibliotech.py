@@ -35,6 +35,11 @@ def parse_date(text: str) -> date:
     return datetime.strptime(text, "%Y-%m-%d").date()
 
 
+def find_by_id(items, item_id):
+    """Return the first matching record, or None."""
+    return next((item for item in items if item["id"] == item_id), None)
+
+
 class Library:
     def __init__(self):
         self.books = []
@@ -124,17 +129,19 @@ class Library:
                     + "\n"
                 )
 
-    def find(self, category, item_id):
-        collections = {"book": self.books, "member": self.members, "loan": self.loans}
-        return next(
-            (item for item in collections.get(category, []) if item["id"] == item_id),
-            None,
-        )
+    def find_book(self, book_id):
+        return find_by_id(self.books, book_id)
+
+    def find_member(self, member_id):
+        return find_by_id(self.members, member_id)
+
+    def find_loan(self, loan_id):
+        return find_by_id(self.loans, loan_id)
 
     def loan_parties(self, loan):
         """Ignore orphan loans with a diagnostic instead of crashing."""
-        book = self.find("book", loan["book"])
-        member = self.find("member", loan["member"])
+        book = self.find_book(loan["book"])
+        member = self.find_member(loan["member"])
         if book is None or member is None:
             LOGGER.warning(
                 "Emprunt %s ignore : livre ou membre introuvable", loan["id"]
@@ -160,7 +167,7 @@ class Library:
         return n
 
     def available_copies(self, bid):
-        bk = self.find("book", bid)
+        bk = self.find_book(bid)
         if bk is None:
             LOGGER.warning("Disponibilite demandee pour un livre inconnu : %s", bid)
             return 0
@@ -171,11 +178,11 @@ class Library:
         return bk["copies"] - n
 
     def borrow(self, member_id, book_id):
-        member = self.find("member", member_id)
+        member = self.find_member(member_id)
         if member is None:
             print("Erreur : membre inconnu")
             return False
-        book = self.find("book", book_id)
+        book = self.find_book(book_id)
         if book is None:
             print("Erreur : livre inconnu")
             return False
@@ -247,7 +254,7 @@ class Library:
 
     # retour d'un document
     def return_loan(self, lid):
-        ln = self.find("loan", lid)
+        ln = self.find_loan(lid)
         if ln is None:
             print("Erreur : emprunt inconnu")
             return
