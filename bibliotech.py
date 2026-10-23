@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import sys
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 DATA = os.environ.get("BIBLIOTECH_DATA", "data")
@@ -28,6 +29,25 @@ def late_fee(days_late: int, kind: str, member_type: str, price: float) -> float
     fee = days_late * DAILY_FEES.get(kind, DEFAULT_DAILY_FEE)
     fee *= 1 - DISCOUNTS.get(member_type, 0.0)
     return round(min(fee, price), 2)
+
+
+def parse_date(text: str) -> date:
+    """Read the date format used by CSV files and the CLI."""
+    return datetime.strptime(text, "%Y-%m-%d").date()
+
+
+def find_by_id(items, item_id):
+    """Return the first matching record, or None."""
+    return next((item for item in items if item["id"] == item_id), None)
+
+
+@dataclass(frozen=True)
+class OverdueLoan:
+    loan_id: str
+    member: dict
+    book: dict
+    days_late: int
+    fee: float
 
 
 class Library:
@@ -119,17 +139,19 @@ class Library:
                     + "\n"
                 )
 
-    def find(self, category, item_id):
-        collections = {"book": self.books, "member": self.members, "loan": self.loans}
-        return next(
-            (item for item in collections.get(category, []) if item["id"] == item_id),
-            None,
-        )
+    def find_book(self, book_id):
+        return find_by_id(self.books, book_id)
+
+    def find_member(self, member_id):
+        return find_by_id(self.members, member_id)
+
+    def find_loan(self, loan_id):
+        return find_by_id(self.loans, loan_id)
 
     def loan_parties(self, loan):
         """Ignore orphan loans with a diagnostic instead of crashing."""
-        book = self.find("book", loan["book"])
-        member = self.find("member", loan["member"])
+        book = self.find_book(loan["book"])
+        member = self.find_member(loan["member"])
         if book is None or member is None:
             LOGGER.warning(
                 "Emprunt %s ignore : livre ou membre introuvable", loan["id"]
@@ -155,7 +177,7 @@ class Library:
         return n
 
     def available_copies(self, bid):
-        bk = self.find("book", bid)
+        bk = self.find_book(bid)
         if bk is None:
             LOGGER.warning("Disponibilite demandee pour un livre inconnu : %s", bid)
             return 0
@@ -166,11 +188,11 @@ class Library:
         return bk["copies"] - n
 
     def borrow(self, member_id, book_id):
-        member = self.find("member", member_id)
+        member = self.find_member(member_id)
         if member is None:
             print("Erreur : membre inconnu")
             return False
-        book = self.find("book", book_id)
+        book = self.find_book(book_id)
         if book is None:
             print("Erreur : livre inconnu")
             return False
@@ -200,7 +222,7 @@ class Library:
         return any(
             loan["member"] == member_id
             and loan["returned"] == ""
-            and datetime.strptime(loan["due"], "%Y-%m-%d").date() < get_today()
+            and parse_date(loan["due"]) < get_today()
             for loan in self.loans
         )
 
@@ -242,7 +264,7 @@ class Library:
 
     # retour d'un document
     def return_loan(self, lid):
-        ln = self.find("loan", lid)
+        ln = self.find_loan(lid)
         if ln is None:
             print("Erreur : emprunt inconnu")
             return
@@ -254,7 +276,7 @@ class Library:
             return
         bk, mb = parties
         t = get_today()
-        d = (t - datetime.strptime(ln["due"], "%Y-%m-%d").date()).days
+        d = (t - parse_date(ln["due"])).days
         f = late_fee(d, bk["kind"], mb["type"], bk["price"])
         d = max(d, 0)
         ln["returned"] = str(t)
@@ -270,50 +292,42 @@ class Library:
             + " EUR"
         )
 
-    # liste des retards + simulation des rappels
-    def overdue(self):
-        overdue_loans = []
-        for loan in self.loans:
+    def find_overdue_loans(self) -> list[OverdueLoan]:
+        """Calculate reminders without printing; log inconsistent references."""
+        today = get_today()
+        results = []
+        for loan in sorted(self.loans, key=lambda item: (item["due"], item["id"])):
             if loan["returned"] != "":
                 continue
-            due = datetime.strptime(loan["due"], "%Y-%m-%d").date()
-            if due >= get_today():
+            due = parse_date(loan["due"])
+            if due >= today:
                 continue
             parties = self.loan_parties(loan)
-            if parties is not None:
-                overdue_loans.append((loan, *parties))
+            if parties is None:
+                continue
+            book, member = parties
+            days = (today - due).days
+            fee = late_fee(days, book["kind"], member["type"], book["price"])
+            results.append(OverdueLoan(loan["id"], member, book, days, fee))
+        return results
+
+    def overdue(self):
+        overdue_loans = self.find_overdue_loans()
         if not overdue_loans:
             print("Aucun retard.")
             return
-        overdue_loans.sort(key=lambda item: (item[0]["due"], item[0]["id"]))
-        total = 0
-        for x, book, member in overdue_loans:
-            nbj = (get_today() - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
-            p = late_fee(nbj, book["kind"], member["type"], book["price"])
-            total = total + p
+        for loan in overdue_loans:
             print(
-                x["id"]
-                + " | "
-                + member["name"]
-                + " | "
-                + book["title"]
-                + " | "
-                + str(nbj)
-                + " jour(s) | "
-                + "%.2f" % p
-                + " EUR"
+                f"{loan.loan_id} | {loan.member['name']} | {loan.book['title']} | "
+                f"{loan.days_late} jour(s) | {loan.fee:.2f} EUR"
             )
             # Simulation du rappel : aucun message n'est envoye.
             print(
-                "EMAIL -> "
-                + member["email"]
-                + " : Rappel, vous devez rendre '"
-                + book["title"]
-                + "' (retard "
-                + str(nbj)
-                + " jours)"
+                f"EMAIL -> {loan.member['email']} : Rappel, vous devez rendre "
+                f"'{loan.book['title']}' (retard {loan.days_late} jours)"
             )
-        print("Total des penalites en cours : " + "%.2f" % total + " EUR")
+        total = sum(loan.fee for loan in overdue_loans)
+        print(f"Total des penalites en cours : {total:.2f} EUR")
 
     def valid_loans(self):
         """Return loans with existing books and members, logging invalid ones."""
@@ -331,9 +345,7 @@ class Library:
                 collected += loan["fee"]
                 continue
             ongoing += 1
-            days = (
-                get_today() - datetime.strptime(loan["due"], "%Y-%m-%d").date()
-            ).days
+            days = (get_today() - parse_date(loan["due"])).days
             if days > 0:
                 overdue += 1
                 pending += late_fee(days, book["kind"], member["type"], book["price"])
@@ -400,11 +412,8 @@ class Library:
                 if parties is None:
                     continue
                 bk, mb = parties
-                if x["returned"] != "":
-                    end = datetime.strptime(x["returned"], "%Y-%m-%d").date()
-                else:
-                    end = get_today()
-                dl = (end - datetime.strptime(x["due"], "%Y-%m-%d").date()).days
+                end = parse_date(x["returned"]) if x["returned"] != "" else get_today()
+                dl = (end - parse_date(x["due"])).days
                 fee = late_fee(dl, bk["kind"], mb["type"], bk["price"])
                 dl = max(dl, 0)
                 f.write(
@@ -537,7 +546,7 @@ if __name__ == "__main__":
     a = sys.argv[1:]
     if "--today" in a:
         i = a.index("--today")
-        TODAY = datetime.strptime(a[i + 1], "%Y-%m-%d").date()
+        TODAY = parse_date(a[i + 1])
         a = a[:i] + a[i + 2 :]
     if "--debug" in a:
         debug = True

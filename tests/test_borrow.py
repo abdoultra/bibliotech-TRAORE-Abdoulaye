@@ -62,7 +62,7 @@ def test_unknown_member_is_checked_before_unknown_book(library, capsys):
 
 
 def test_inactive_member_is_checked_before_overdue_loan(library, capsys):
-    member = library.find("member", "M001")
+    member = library.find_member("M001")
     member["active"] = False
     assert library.borrow("M001", "B002") is False
     assert capsys.readouterr().out == "Refus : membre inactif\n"

@@ -1,0 +1,57 @@
+REFERENCE : v2-fin-j2 (f6eda6b)
+Releve sur une extraction temporaire du tag, sans modifier le depot.
+
+$ python -m ruff check . --select E,W,F,B,S,C90,SIM --extend-exclude tests --statistics
+(aucun signalement / aucune fonction correspondante)
+
+$ python -m radon cc -s -a --exclude "tests/*" .
+bibliotech.py
+    M 274:4 Library.overdue - B (7)
+    M 184:4 Library.refusal_reason - B (6)
+    M 157:4 Library.available_copies - A (5)
+    M 342:4 Library.print_loan_rankings - A (5)
+    C 33:0 Library - A (4)
+    M 78:4 Library.load_loans - A (4)
+    M 150:4 Library.active_loan_count - A (4)
+    M 168:4 Library.borrow - A (4)
+    M 199:4 Library.has_overdue_loan - A (4)
+    M 207:4 Library.is_borrowing - A (4)
+    M 244:4 Library.return_loan - A (4)
+    M 327:4 Library.loan_statistics - A (4)
+    M 378:4 Library.export - A (4)
+    F 467:0 members_command - A (3)
+    F 477:0 borrow_command - A (3)
+    F 521:0 process - A (3)
+    M 48:4 Library.load_books - A (3)
+    M 66:4 Library.load_members - A (3)
+    M 122:4 Library.find - A (3)
+    M 129:4 Library.loan_parties - A (3)
+    M 140:4 Library.next_loan_id - A (3)
+    M 318:4 Library.valid_loans - A (3)
+    M 361:4 Library.report - A (3)
+    M 437:4 Library.run_plugins - A (3)
+    F 24:0 late_fee - A (2)
+    F 451:0 get_today - A (2)
+    F 457:0 list_command - A (2)
+    F 484:0 return_command - A (2)
+    F 502:0 export_command - A (2)
+    M 41:4 Library.load - A (2)
+    M 101:4 Library.save - A (2)
+    M 432:4 Library.register_plugin - A (2)
+    F 492:0 overdue_command - A (1)
+    F 497:0 report_command - A (1)
+    M 34:4 Library.__init__ - A (1)
+    M 215:4 Library.create_loan - A (1)
+
+36 blocks (classes, functions, methods) analyzed.
+Average complexity: A (3.111111111111111)
+
+$ python -m radon cc -s -n C --exclude "tests/*" .
+(aucun signalement / aucune fonction correspondante)
+
+$ python -m pytest -q
+.............................................................            [100%]
+61 passed in 5.02s
+
+$ python -m radon mi -s --exclude "tests/*" .
+bibliotech.py - B (12.70)
