@@ -1,0 +1,63 @@
+ETAT : branche qualite apres les quatre ameliorations de code/configuration.
+
+$ python -m ruff check . --select E,W,F,B,S,C90,SIM --extend-exclude tests --statistics
+(aucun signalement / aucune fonction correspondante)
+
+$ python -m radon cc -s -a --exclude "tests/*" .
+bibliotech.py
+    M 206:4 Library.refusal_reason - B (6)
+    M 179:4 Library.available_copies - A (5)
+    M 295:4 Library.find_overdue_loans - A (5)
+    M 354:4 Library.print_loan_rankings - A (5)
+    C 53:0 Library - A (4)
+    M 98:4 Library.load_loans - A (4)
+    M 172:4 Library.active_loan_count - A (4)
+    M 190:4 Library.borrow - A (4)
+    M 221:4 Library.has_overdue_loan - A (4)
+    M 229:4 Library.is_borrowing - A (4)
+    M 266:4 Library.return_loan - A (4)
+    M 314:4 Library.overdue - A (4)
+    M 341:4 Library.loan_statistics - A (4)
+    M 390:4 Library.export - A (4)
+    F 39:0 find_by_id - A (3)
+    F 476:0 members_command - A (3)
+    F 486:0 borrow_command - A (3)
+    F 530:0 process - A (3)
+    M 68:4 Library.load_books - A (3)
+    M 86:4 Library.load_members - A (3)
+    M 151:4 Library.loan_parties - A (3)
+    M 162:4 Library.next_loan_id - A (3)
+    M 332:4 Library.valid_loans - A (3)
+    M 373:4 Library.report - A (3)
+    M 446:4 Library.run_plugins - A (3)
+    F 25:0 late_fee - A (2)
+    F 460:0 get_today - A (2)
+    F 466:0 list_command - A (2)
+    F 493:0 return_command - A (2)
+    F 511:0 export_command - A (2)
+    M 61:4 Library.load - A (2)
+    M 121:4 Library.save - A (2)
+    M 441:4 Library.register_plugin - A (2)
+    F 34:0 parse_date - A (1)
+    F 501:0 overdue_command - A (1)
+    F 506:0 report_command - A (1)
+    C 45:0 OverdueLoan - A (1)
+    M 54:4 Library.__init__ - A (1)
+    M 142:4 Library.find_book - A (1)
+    M 145:4 Library.find_member - A (1)
+    M 148:4 Library.find_loan - A (1)
+    M 237:4 Library.create_loan - A (1)
+
+42 blocks (classes, functions, methods) analyzed.
+Average complexity: A (2.8333333333333335)
+
+$ python -m radon cc -s -n C --exclude "tests/*" .
+(aucun signalement / aucune fonction correspondante)
+
+$ python -m pytest -q
+........................................................................ [ 93%]
+.....                                                                    [100%]
+77 passed in 5.07s
+
+$ python -m radon mi -s --exclude "tests/*" .
+bibliotech.py - B (11.44)
